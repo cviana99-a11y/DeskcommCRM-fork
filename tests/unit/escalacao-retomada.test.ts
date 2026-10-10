@@ -25,6 +25,8 @@ const CONTATO = "55555555-5555-4555-8555-555555555555";
 const NEGOCIO = "66666666-6666-4666-8666-666666666666";
 const ATENDENTE = "11111111-1111-4111-8111-111111111111";
 const CHAMADO = "33333333-3333-4333-8333-333333333333";
+const SESSAO = "88888888-8888-4888-8888-888888888888";
+const MENSAGEM = "99999999-9999-4999-8999-999999999999";
 
 const USUARIO: Actor = { type: "user", id: ATENDENTE, role: "manager" };
 
@@ -52,6 +54,10 @@ interface CenarioBanco {
   erroDoEmitEvent?: { message: string } | null;
   /** Falha no UPDATE de `contacts.force_human` — o passo (3) de `retomada.ts`. */
   erroAoLimparForceHuman?: { message: string } | null;
+  /** A última mensagem da conversa — o passo (7). Ausente = conversa sem mensagem. */
+  ultimaMensagem?: { id: string; direction: string } | null;
+  /** Falha só no emit do pedido de turno (`ai_agent.dispatch_requested`). */
+  erroDoPedidoDeTurno?: { message: string } | null;
 }
 
 /**
@@ -93,6 +99,9 @@ function fazerSupabase(cenario: CenarioBanco, cap: Captura) {
         if (tabela === "crm_pipelines") {
           return Promise.resolve({ data: { id: "pipe-1" }, error: null });
         }
+        if (tabela === "messages") {
+          return Promise.resolve({ data: cenario.ultimaMensagem ?? null, error: null });
+        }
         return Promise.resolve({ data: null, error: null });
       },
       then: (res: (v: unknown) => unknown) => {
@@ -118,6 +127,9 @@ function fazerSupabase(cenario: CenarioBanco, cap: Captura) {
     from,
     rpc: (fn: string, args: Record<string, unknown>) => {
       cap.rpc.push({ fn, args });
+      if (fn === "emit_event" && args.p_event_type === "ai_agent.dispatch_requested") {
+        return Promise.resolve({ data: null, error: cenario.erroDoPedidoDeTurno ?? null });
+      }
       if (fn === "emit_event") {
         return Promise.resolve({ data: null, error: cenario.erroDoEmitEvent ?? null });
       }
@@ -130,6 +142,7 @@ function conversaPassadaAHumano(over: Record<string, unknown> = {}) {
   return {
     id: CONV,
     contact_id: CONTATO,
+    channel_session_id: SESSAO,
     status: "claimed",
     assigned_to_user_id: ATENDENTE,
     assignee_kind: "user",
@@ -452,6 +465,108 @@ describe("devolver o atendimento ao agente", () => {
     );
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.jaEstavaComOAgente).toBe(true);
+  });
+
+  describe("o cliente que está esperando é respondido", () => {
+    const pedidosDeTurno = (cap: Captura) =>
+      cap.rpc.filter(
+        (r) => r.fn === "emit_event" && r.args.p_event_type === "ai_agent.dispatch_requested",
+      );
+
+    it("última mensagem do cliente: pede o turno com o mesmo contrato da ingestão", async () => {
+      const cap = novaCaptura();
+      const res = await retomar(
+        cenarioComAtendimentoHumano({ ultimaMensagem: { id: MENSAGEM, direction: "inbound" } }),
+        cap,
+      );
+      expect(res.ok).toBe(true);
+      expect(pedidosDeTurno(cap)).toEqual([
+        {
+          fn: "emit_event",
+          args: expect.objectContaining({
+            p_entity_kind: "message",
+            p_entity_id: MENSAGEM,
+            p_organization_id: ORG,
+            p_payload: {
+              organization_id: ORG,
+              conversation_id: CONV,
+              contact_id: CONTATO,
+              channel_session_id: SESSAO,
+              inbound_message_id: MENSAGEM,
+            },
+          }),
+        },
+      ]);
+    });
+
+    it("vale também para a devolução automática pelo prazo", async () => {
+      const cap = novaCaptura();
+      const cron: Actor = { type: "webhook_source", id: "cron:handoff-devolucao" };
+      await retomar(
+        cenarioComAtendimentoHumano({ ultimaMensagem: { id: MENSAGEM, direction: "inbound" } }),
+        cap,
+        cron,
+        { automatica: { minutos: 60 } },
+      );
+      expect(pedidosDeTurno(cap)).toHaveLength(1);
+    });
+
+    it("última mensagem da equipe: o cliente não espera, a IA aguarda a próxima", async () => {
+      const cap = novaCaptura();
+      await retomar(
+        cenarioComAtendimentoHumano({ ultimaMensagem: { id: MENSAGEM, direction: "outbound" } }),
+        cap,
+      );
+      expect(pedidosDeTurno(cap)).toEqual([]);
+    });
+
+    it("conversa sem mensagem nenhuma não pede turno", async () => {
+      const cap = novaCaptura();
+      await retomar(cenarioComAtendimentoHumano({ ultimaMensagem: null }), cap);
+      expect(pedidosDeTurno(cap)).toEqual([]);
+    });
+
+    it("repetir o clique numa conversa que já estava com o agente não pede turno de novo", async () => {
+      const cap = novaCaptura();
+      await retomar(
+        cenarioComAtendimentoHumano({
+          conversa: conversaPassadaAHumano({
+            assigned_to_user_id: null,
+            assignee_kind: "ai",
+            bot_silenced_until: null,
+            status: "ai_handling",
+          }),
+          ultimaMensagem: { id: MENSAGEM, direction: "inbound" },
+        }),
+        cap,
+      );
+      expect(pedidosDeTurno(cap)).toEqual([]);
+    });
+
+    it("conversa encerrada não pede turno", async () => {
+      const cap = novaCaptura();
+      await retomar(
+        cenarioComAtendimentoHumano({
+          conversa: conversaPassadaAHumano({ status: "closed", assigned_to_user_id: null }),
+          ultimaMensagem: { id: MENSAGEM, direction: "inbound" },
+        }),
+        cap,
+      );
+      expect(pedidosDeTurno(cap)).toEqual([]);
+    });
+
+    it("falha ao pedir o turno não desfaz a devolução", async () => {
+      const cap = novaCaptura();
+      const res = await retomar(
+        cenarioComAtendimentoHumano({
+          ultimaMensagem: { id: MENSAGEM, direction: "inbound" },
+          erroDoPedidoDeTurno: { message: "boom" },
+        }),
+        cap,
+      );
+      expect(res.ok).toBe(true);
+      expect(pedidosDeTurno(cap)).toHaveLength(1);
+    });
   });
 
   it("conversa encerrada não é reaberta pela volta", async () => {
