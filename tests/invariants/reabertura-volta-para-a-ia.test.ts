@@ -134,7 +134,7 @@ describe("conversa encerrada depois de passar por uma pessoa, com o ajuste LIGAD
 });
 
 /**
- * O PADRÃO — e o de toda empresa que já existia antes da 0629: as travas da
+ * O PADRÃO — e o de toda empresa que já existia antes da 0632: as travas da
  * passagem sobrevivem à reabertura, exatamente como na 0396.
  */
 describe("conversa encerrada depois de passar por uma pessoa, com o ajuste DESLIGADO", () => {

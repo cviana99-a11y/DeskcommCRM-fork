@@ -91,7 +91,7 @@ export const routingConfigSchema = z.object({
    * atendente ainda é da equipe, ELE vence: a conversa volta para ele. Este
    * ajuste vale para o resto — inclusive quando aquele atendente saiu.
    *
-   * ⚠️ O BANCO LÊ ESTE CAMINHO EXATO: `fn_service_inbound` (migration 0629)
+   * ⚠️ O BANCO LÊ ESTE CAMINHO EXATO: `fn_service_inbound` (migration 0632)
    * compara `settings->'routing'->'reopened_conversation_goes_to_ai'` com o
    * booleano `true`. No TypeScript, quem lê é `conversaReabertaVoltaParaIA()`.
    */

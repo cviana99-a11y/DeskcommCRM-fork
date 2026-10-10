@@ -1,6 +1,6 @@
 -- manifest: ajuste por empresa "a conversa encerrada volta para a IA" — a mensagem nova numa conversa encerrada reabre com a IA atendendo, soltando o silêncio da passagem e o só-humano do contato
 --
--- 0629 — A conversa encerrada volta para a IA: ajuste por empresa, DESLIGADO
+-- 0632 — A conversa encerrada volta para a IA: ajuste por empresa, DESLIGADO
 -- por padrão.
 --
 -- O defeito, medido numa instalação real: a passagem para humano grava
@@ -60,7 +60,7 @@ begin
                    from public.organizations o where o.id = c.organization_id), false)
    and coalesce(public.fn_member_role_in_org(c.assigned_to_user_id,c.organization_id),'none')
      in ('agent','manager','admin');
- -- Só quando a empresa ligou "a conversa encerrada volta para a IA" (0629), com
+ -- Só quando a empresa ligou "a conversa encerrada volta para a IA" (0632), com
  -- a mesma régua, e nunca por cima de quem ficou com a conversa acima.
  ai_resume := reopened and not keep_owner
    and coalesce((select o.settings->'routing'->'reopened_conversation_goes_to_ai' = 'true'::jsonb

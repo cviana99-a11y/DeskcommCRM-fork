@@ -10,7 +10,7 @@ import { RECURSOS_OPCIONAIS } from "@/lib/recursos-opcionais/catalogo";
 
 /**
  * "A conversa encerrada volta para a IA": ajuste por empresa, DESLIGADO por
- * padrão. O banco (`fn_service_inbound`, migration 0629) lê o mesmo caminho com
+ * padrão. O banco (`fn_service_inbound`, migration 0632) lê o mesmo caminho com
  * a mesma régua — só o booleano `true` liga.
  */
 describe("conversaReabertaVoltaParaIA", () => {

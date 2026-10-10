@@ -50589,9 +50589,9 @@ create trigger trg_lgpd_secoes_de_modulo
   when (new.is_anonymized and not old.is_anonymized)
   execute function public.fn_lgpd_redigir_secoes_de_modulo();
 
--- ---- a conversa encerrada volta para a IA, ajuste por empresa (migration 0629) ----
+-- ---- a conversa encerrada volta para a IA, ajuste por empresa (migration 0632) ----
 --
--- 0629 — A conversa encerrada volta para a IA: ajuste por empresa, DESLIGADO
+-- 0632 — A conversa encerrada volta para a IA: ajuste por empresa, DESLIGADO
 -- por padrão.
 --
 -- O defeito, medido numa instalação real: a passagem para humano grava
@@ -50651,7 +50651,7 @@ begin
                    from public.organizations o where o.id = c.organization_id), false)
    and coalesce(public.fn_member_role_in_org(c.assigned_to_user_id,c.organization_id),'none')
      in ('agent','manager','admin');
- -- Só quando a empresa ligou "a conversa encerrada volta para a IA" (0629), com
+ -- Só quando a empresa ligou "a conversa encerrada volta para a IA" (0632), com
  -- a mesma régua, e nunca por cima de quem ficou com a conversa acima.
  ai_resume := reopened and not keep_owner
    and coalesce((select o.settings->'routing'->'reopened_conversation_goes_to_ai' = 'true'::jsonb
