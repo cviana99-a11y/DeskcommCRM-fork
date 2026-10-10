@@ -6599,6 +6599,18 @@ export const DICIONARIO: Traducoes = {
     es: "Si está desactivado, rige la regla de siempre: responder desde la pantalla silencia a la IA por algunos minutos, y la conversación cerrada que recibe un mensaje nuevo vuelve a la fila.",
   },
   "A conversa fica com quem atendeu": { es: "La conversación se queda con quien la atendió" },
+  "A conversa encerrada volta para a IA quando o cliente escreve de novo": {
+    es: "La conversación cerrada vuelve a la IA cuando el cliente escribe de nuevo",
+  },
+  "A IA atende a mensagem nova na hora, mesmo que a conversa já tenha passado por uma pessoa, e transfere para a equipe pela distribuição acima se precisar. Isso também tira a marca de só humano do contato. Desligado, vale a regra de sempre: a conversa reaberta vai para a fila e a IA fica calada até alguém clicar em Devolver.": {
+    es: "La IA atiende el mensaje nuevo de inmediato, aunque la conversación ya haya pasado por una persona, y la transfiere al equipo según la distribución de arriba si lo necesita. Esto también le quita al contacto la marca de solo humano. Si está desactivado, rige la regla de siempre: la conversación reabierta va a la fila y la IA queda en silencio hasta que alguien haga clic en Devolver.",
+  },
+  "A conversa encerrada volta para a IA": {
+    es: "La conversación cerrada vuelve a la IA",
+  },
+  "Quando o cliente escreve numa conversa encerrada, a IA atende de novo e transfere se precisar.": {
+    es: "Cuando el cliente escribe en una conversación cerrada, la IA vuelve a atender y transfiere si lo necesita.",
+  },
   "Responder pelo Inbox numa conversa sem dono passa a assumi-la, e a IA fica calada até alguém devolver. Quando o cliente escreve numa conversa encerrada, ela volta direto para o último atendente, sem passar pela distribuição, se ele ainda faz parte da equipe.": {
     es: "Responder desde el Inbox en una conversación sin responsable la asigna a quien responde, y la IA queda en silencio hasta que alguien la devuelva. Cuando el cliente escribe en una conversación cerrada, vuelve directo al último asesor, sin pasar por la distribución, si todavía forma parte del equipo.",
   },

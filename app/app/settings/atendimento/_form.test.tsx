@@ -29,6 +29,7 @@ const inicial: AtendimentoConfig = {
   visibility_mode: "all",
   handoff_return_after_minutes: null,
   conversation_stays_with_attendant: false,
+  reopened_conversation_goes_to_ai: false,
   manual_reply_silence_minutes: null,
 };
 
@@ -97,6 +98,30 @@ describe("Distribuição de atendimento — a conversa fica com quem atendeu", (
   it("empresa com o ajuste ligado vê a caixa marcada", () => {
     render(<AtendimentoForm initial={{ ...inicial, conversation_stays_with_attendant: true }} />);
     expect(screen.getByTestId("fica-com-quem-atendeu")).toBeChecked();
+  });
+});
+
+describe("Distribuição de atendimento — a conversa encerrada volta para a IA", () => {
+  it("desligado por padrão, e salvar outra coisa manda false", async () => {
+    render(<AtendimentoForm initial={inicial} />);
+    expect(screen.getByTestId("reaberta-volta-para-ia")).not.toBeChecked();
+    fireEvent.click(screen.getByTestId("opcao-modo-load"));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    expect(corpoDoPatch()).toMatchObject({ reopened_conversation_goes_to_ai: false });
+  });
+
+  it("ligar manda true", async () => {
+    render(<AtendimentoForm initial={inicial} />);
+    fireEvent.click(screen.getByTestId("reaberta-volta-para-ia"));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    expect(corpoDoPatch()).toMatchObject({ reopened_conversation_goes_to_ai: true });
+  });
+
+  it("empresa com o ajuste ligado vê a caixa marcada", () => {
+    render(<AtendimentoForm initial={{ ...inicial, reopened_conversation_goes_to_ai: true }} />);
+    expect(screen.getByTestId("reaberta-volta-para-ia")).toBeChecked();
   });
 });
 

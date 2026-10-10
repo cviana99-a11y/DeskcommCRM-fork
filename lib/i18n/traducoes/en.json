@@ -9021,5 +9021,9 @@
   "O dono precisa ser membro ativo desta empresa, com papel de atendente, gerente ou administrador. Quem só lê, e quem saiu da equipe, não é dono de carteira.": "The owner must be an active member of this company with an agent, manager, or administrator role. Read-only members, and members who left the team, cannot own a portfolio.",
   "Contato não encontrado nesta empresa.": "Contact not found in this company.",
   "A origem da carteira não é válida.": "The portfolio source is not valid.",
-  "Não foi possível salvar a carteira do cliente.": "Could not save the client's portfolio."
+  "Não foi possível salvar a carteira do cliente.": "Could not save the client's portfolio.",
+  "A conversa encerrada volta para a IA quando o cliente escreve de novo": "A closed conversation goes back to the AI when the customer writes again",
+  "A IA atende a mensagem nova na hora, mesmo que a conversa já tenha passado por uma pessoa, e transfere para a equipe pela distribuição acima se precisar. Isso também tira a marca de só humano do contato. Desligado, vale a regra de sempre: a conversa reaberta vai para a fila e a IA fica calada até alguém clicar em Devolver.": "The AI answers the new message right away, even if the conversation has already been handled by a person, and transfers it to the team through the distribution above if needed. This also removes the human-only mark from the contact. When off, the usual rule applies: the reopened conversation goes to the queue and the AI stays silent until someone clicks Return.",
+  "A conversa encerrada volta para a IA": "A closed conversation goes back to the AI",
+  "Quando o cliente escreve numa conversa encerrada, a IA atende de novo e transfere se precisar.": "When the customer writes in a closed conversation, the AI answers again and transfers if needed."
 }

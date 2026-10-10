@@ -30,6 +30,8 @@ export interface AtendimentoConfig {
   handoff_return_after_minutes: number | null;
   /** "A conversa fica com quem atendeu" — desligado é o padrão do produto. */
   conversation_stays_with_attendant: boolean;
+  /** "A conversa encerrada volta para a IA" — desligado é o padrão do produto. */
+  reopened_conversation_goes_to_ai: boolean;
   /** Minutos de silêncio da IA após resposta pelo celular. `null` = o padrão de 60. */
   manual_reply_silence_minutes: number | null;
 }
@@ -302,6 +304,28 @@ export function AtendimentoForm({ initial }: { initial: AtendimentoConfig }) {
             </p>
           </div>
         ) : null}
+        <label className="flex cursor-pointer items-start gap-3 border-t pt-4">
+          <input
+            type="checkbox"
+            data-testid="reaberta-volta-para-ia"
+            checked={form.reopened_conversation_goes_to_ai}
+            disabled={isPending}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, reopened_conversation_goes_to_ai: e.target.checked }))
+            }
+            className="mt-1 h-4 w-4 shrink-0 accent-primary"
+          />
+          <span className="space-y-1">
+            <span className="block text-sm font-medium">
+              {t("A conversa encerrada volta para a IA quando o cliente escreve de novo")}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {t(
+                "A IA atende a mensagem nova na hora, mesmo que a conversa já tenha passado por uma pessoa, e transfere para a equipe pela distribuição acima se precisar. Isso também tira a marca de só humano do contato. Desligado, vale a regra de sempre: a conversa reaberta vai para a fila e a IA fica calada até alguém clicar em Devolver.",
+              )}
+            </span>
+          </span>
+        </label>
       </Card>
 
       <Card className="space-y-4 p-4" data-testid="silencio-apos-resposta-pelo-celular">
