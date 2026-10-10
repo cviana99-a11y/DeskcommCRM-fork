@@ -81,6 +81,7 @@ const STATUS_REATIVAVEIS = new Set(["open", "pending", "claimed", "ai_handling"]
 interface ConversaRow {
   id: string;
   contact_id: string | null;
+  channel_session_id: string | null;
   status: string | null;
   assigned_to_user_id: string | null;
   assignee_kind: string | null;
@@ -95,7 +96,7 @@ export async function devolverAtendimentoAoAgente(
 
   const { data: convData, error: convErr } = await supabase
     .from("conversations")
-    .select("id, contact_id, status, assigned_to_user_id, assignee_kind, bot_silenced_until")
+    .select("id, contact_id, channel_session_id, status, assigned_to_user_id, assignee_kind, bot_silenced_until")
     .eq("id", input.conversationId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -252,6 +253,17 @@ export async function devolverAtendimentoAoAgente(
     );
   }
 
+  // (7) O CLIENTE QUE ESTÁ ESPERANDO É RESPONDIDO. Soltar as travas não acorda
+  // o agente: o turno só nasce de `ai_agent.dispatch_requested`, que a ingestão
+  // emite quando a mensagem CHEGA — e a que chegou durante a passagem teve o
+  // turno pulado. Sem isto a IA "voltava" muda até o cliente escrever de novo.
+  // Só quando a devolução mudou algo e a conversa ficou com o agente; repetir o
+  // clique numa conversa que já estava com ele não pede turno de novo.
+  const respostaPedida =
+    !jaEstavaComOAgente && proximoStatus === "ai_handling"
+      ? await pedirTurnoSeOClienteEspera(deps, conv)
+      : false;
+
   await audit({
     action: "ai.reactivated_by_agent",
     actorUserId: deps.actor.type === "user" ? deps.actor.id : null,
@@ -265,11 +277,72 @@ export async function devolverAtendimentoAoAgente(
       houve_atendimento_humano: continuidade.houveAtendimentoHumano,
       decisoes: continuidade.decisoes.length,
       notas: continuidade.notas.length,
+      resposta_pedida: respostaPedida,
       ...(input.origem ? { automatica: true, apos_minutos: input.origem.automatica.minutos } : {}),
     },
   });
 
   return { ok: true, conversationId: input.conversationId, jaEstavaComOAgente, continuidade };
+}
+
+/**
+ * Pede um turno do agente quando a ÚLTIMA mensagem da conversa é do cliente —
+ * ele escreveu e ninguém respondeu. Se a última foi da equipe (pela tela ou pelo
+ * celular), o cliente não está esperando, e a IA aguarda a próxima mensagem dele.
+ *
+ * O pedido é o MESMO evento que a ingestão emite (`lib/channels/pos-entrada.ts`),
+ * então o drain aplica as mesmas barreiras de uma mensagem nova: agente
+ * publicado, elegibilidade (lista de teste, gate), canal desativado, grupo e
+ * "uma resposta por mensagem". Nenhuma regra é decidida aqui.
+ *
+ * Falha não derruba a devolução: as travas já saíram, e o cliente ainda é
+ * respondido na próxima mensagem — o que era o comportamento de antes.
+ */
+async function pedirTurnoSeOClienteEspera(deps: RetomadaDeps, conv: ConversaRow): Promise<boolean> {
+  const { supabase, organizationId } = deps;
+  if (conv.contact_id === null || conv.channel_session_id === null) return false;
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, direction")
+    .eq("organization_id", organizationId)
+    .eq("conversation_id", conv.id)
+    .order("sent_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    logger.warn("[escalacao.retomada] última mensagem não foi lida — turno não pedido", {
+      conversation_id: conv.id,
+      error: error.message,
+    });
+    return false;
+  }
+  const ultima = data as { id: string; direction: string } | null;
+  if (ultima === null || ultima.direction !== "inbound") return false;
+
+  const { error: emitErr } = await supabase.rpc("emit_event", {
+    p_event_type: "ai_agent.dispatch_requested",
+    p_entity_kind: "message",
+    p_entity_id: ultima.id,
+    p_payload: {
+      organization_id: organizationId,
+      conversation_id: conv.id,
+      contact_id: conv.contact_id,
+      channel_session_id: conv.channel_session_id,
+      inbound_message_id: ultima.id,
+    },
+    p_metadata: { source: "escalacao.retomada", request_id: deps.requestId },
+    p_organization_id: organizationId,
+  });
+  if (emitErr) {
+    logger.warn("[escalacao.retomada] turno do agente não foi pedido", {
+      conversation_id: conv.id,
+      error: emitErr.message,
+    });
+    return false;
+  }
+  return true;
 }
 
 /**
