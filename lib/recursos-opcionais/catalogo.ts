@@ -35,7 +35,7 @@ import { NAV_CATALOG, type NavMetadata } from "@/lib/navigation/catalogo";
 import { vendaPeloCanalLigada } from "@/lib/conversoes/venda-pelo-canal";
 import { lerConfigDoJev } from "@/lib/ai/decisao/config";
 import { capacidadesLigadas, type CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
-import { conversaFicaComQuemAtendeu } from "@/lib/schemas/routing";
+import { conversaFicaComQuemAtendeu, conversaReabertaVoltaParaIA } from "@/lib/schemas/routing";
 import { configAssinatura } from "@/lib/messaging/assinatura";
 
 /** Quem decide: o servidor inteiro, a empresa, cada agente, ou o arquivo do servidor. */
@@ -369,6 +369,16 @@ const DA_EMPRESA: RecursoOpcional[] = [
     quemDecide: "manager",
     href: "/app/settings/atendimento",
     ler: peloSettings((s) => typeof objeto(s.routing)?.handoff_return_after_minutes === "number"),
+  },
+  {
+    id: "conversa_reaberta_volta_para_ia",
+    nome: "A conversa encerrada volta para a IA",
+    oQueFaz: "Quando o cliente escreve numa conversa encerrada, a IA atende de novo e transfere se precisar.",
+    nivel: "organizacao",
+    padrao: "desligado",
+    quemDecide: "manager",
+    href: "/app/settings/atendimento",
+    ler: peloSettings((s) => conversaReabertaVoltaParaIA(s)),
   },
   {
     id: "atendente_so_ve_os_seus",

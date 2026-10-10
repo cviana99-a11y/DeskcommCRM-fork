@@ -92,12 +92,13 @@ describe("config de atendimento — routing + visibilidade na mesma porta", () =
     // a mudança seria quebra de API disfarçada de feature nova.
     const antigo = { mode: "round_robin", max_retries: 3, backoff_seconds: 30 };
     // O corpo antigo não conhece o prazo de devolução, "a conversa fica com
-    // quem atendeu" nem o prazo do silêncio manual: no PATCH eles ficam
-    // OMITIDOS (e a mescla preserva o que vale), no schema do jsonb eles têm o
-    // padrão (null, false e null).
+    // quem atendeu", "a conversa encerrada volta para a IA" nem o prazo do
+    // silêncio manual: no PATCH eles ficam OMITIDOS (e a mescla preserva o que
+    // vale), no schema do jsonb eles têm o padrão (null, false, false e null).
     const {
       handoff_return_after_minutes: _padrao,
       conversation_stays_with_attendant: _fica,
+      reopened_conversation_goes_to_ai: _volta,
       manual_reply_silence_minutes: _silencio,
       ...semPrazo
     } = routingConfigSchema.parse(antigo);

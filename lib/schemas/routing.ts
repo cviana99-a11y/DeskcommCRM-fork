@@ -77,6 +77,25 @@ export const routingConfigSchema = z.object({
    * No TypeScript, quem lê é `conversaFicaComQuemAtendeu()`, com a mesma régua.
    */
   conversation_stays_with_attendant: z.boolean().default(false),
+  /**
+   * "A conversa encerrada volta para a IA". Desligado = o comportamento de
+   * sempre: a conversa que já passou por uma pessoa e foi encerrada reabre na
+   * fila com a IA calada (`bot_silenced_until` da passagem sobrevive ao
+   * encerramento), e o cliente que escreve de novo fica sem resposta até alguém
+   * clicar "Devolver". Ligado: a mensagem nova reabre a conversa com a IA
+   * atendendo — solta as mesmas travas que o botão "Devolver ao automático"
+   * solta (o silêncio da conversa e o "só humano" do contato) — e é ela quem
+   * passa para uma pessoa de novo, se precisar, pela distribuição configurada.
+   *
+   * Se "a conversa fica com quem atendeu" também estiver ligado e o último
+   * atendente ainda é da equipe, ELE vence: a conversa volta para ele. Este
+   * ajuste vale para o resto — inclusive quando aquele atendente saiu.
+   *
+   * ⚠️ O BANCO LÊ ESTE CAMINHO EXATO: `fn_service_inbound` (migration 0629)
+   * compara `settings->'routing'->'reopened_conversation_goes_to_ai'` com o
+   * booleano `true`. No TypeScript, quem lê é `conversaReabertaVoltaParaIA()`.
+   */
+  reopened_conversation_goes_to_ai: z.boolean().default(false),
 });
 export type RoutingConfig = z.infer<typeof routingConfigSchema>;
 
@@ -92,6 +111,17 @@ export function conversaFicaComQuemAtendeu(settings: unknown): boolean {
   const routing = (settings as Record<string, unknown>).routing;
   if (!routing || typeof routing !== "object") return false;
   return (routing as Record<string, unknown>).conversation_stays_with_attendant === true;
+}
+
+/**
+ * Lê o ajuste "a conversa encerrada volta para a IA" sem nunca lançar — a
+ * mesma régua do banco: só o booleano `true` liga.
+ */
+export function conversaReabertaVoltaParaIA(settings: unknown): boolean {
+  if (!settings || typeof settings !== "object") return false;
+  const routing = (settings as Record<string, unknown>).routing;
+  if (!routing || typeof routing !== "object") return false;
+  return (routing as Record<string, unknown>).reopened_conversation_goes_to_ai === true;
 }
 
 /**
@@ -133,6 +163,8 @@ export const atendimentoConfigPatchSchema = routingConfigSchema.extend({
     .optional(),
   /** Opcional pela mesma razão: cliente antigo não desliga o ajuste por omissão. */
   conversation_stays_with_attendant: z.boolean().optional(),
+  /** Opcional pela mesma razão: cliente antigo não desliga o ajuste por omissão. */
+  reopened_conversation_goes_to_ai: z.boolean().optional(),
   /** Opcional pela mesma razão: cliente antigo não volta o prazo para 60 por omissão. */
   manual_reply_silence_minutes: z
     .number()
@@ -151,8 +183,8 @@ export type AtendimentoConfigPatch = z.infer<typeof atendimentoConfigPatchSchema
  *
  * Merge não-destrutivo em DOIS níveis: preserva as demais chaves de `settings`
  * (o provedor de IA mora nele) e, para o que veio OMITIDO do corpo —
- * `visibility_mode`, `handoff_return_after_minutes`, `conversation_stays_with_attendant`
- * e `manual_reply_silence_minutes` —, preserva o que já
+ * `visibility_mode`, `handoff_return_after_minutes`, `conversation_stays_with_attendant`,
+ * `reopened_conversation_goes_to_ai` e `manual_reply_silence_minutes` —, preserva o que já
  * valia. Um cliente antigo, que só conhece o modo de roteamento, não pode
  * desligar a restrição de visibilidade nem a devolução automática por omissão.
  */
@@ -164,6 +196,7 @@ export function mesclarSettingsDeAtendimento(
     visibility_mode,
     handoff_return_after_minutes,
     conversation_stays_with_attendant,
+    reopened_conversation_goes_to_ai,
     manual_reply_silence_minutes,
     ...routingInput
   } = input;
@@ -178,6 +211,8 @@ export function mesclarSettingsDeAtendimento(
         : routingAtual.handoff_return_after_minutes,
     conversation_stays_with_attendant:
       conversation_stays_with_attendant ?? routingAtual.conversation_stays_with_attendant,
+    reopened_conversation_goes_to_ai:
+      reopened_conversation_goes_to_ai ?? routingAtual.reopened_conversation_goes_to_ai,
     manual_reply_silence_minutes:
       manual_reply_silence_minutes !== undefined
         ? manual_reply_silence_minutes
